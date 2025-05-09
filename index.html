@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>College Admission Chatbot</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>College Admission Chatbot</h2>
+        <div class="chat-box" id="chat-box"></div>
+        <button onclick="startListening()">Speak</button>
+        <button onclick="submitForm()">Submit Form</button>
+    </div>
+
+    <script>
+        let fields = ["name", "dob", "email", "phone", "department"];
+        let fieldQuestions = {
+            name: "Hello! Welcome to the college admission form. What is your full name?",
+            dob: "Great! What is your date of birth?",
+            email: "Thanks! What is your email address?",
+            phone: "Please tell me your phone number.",
+            department: "Which department do you wish to apply for?"
+        };
+
+        let formData = {};
+        let currentFieldIndex = 0;
+
+        function addChat(text, sender) {
+            let chat = document.createElement("div");
+            chat.className = sender;
+            chat.innerText = text;
+            document.getElementById("chat-box").appendChild(chat);
+        }
+
+        function startListening() {
+            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+
+            if (currentFieldIndex < fields.length) {
+                let field = fields[currentFieldIndex];
+                addChat(fieldQuestions[field], "bot");
+
+                recognition.start();
+
+                recognition.onresult = function (event) {
+                    let speech = event.results[0][0].transcript;
+                    addChat(speech, "user");
+                    formData[field] = speech;
+                    currentFieldIndex++;
+                    if (currentFieldIndex < fields.length) {
+                        setTimeout(() => startListening(), 1500);
+                    } else {
+                        addChat("All details collected. Please click Submit.", "bot");
+                    }
+                };
+
+                recognition.onerror = function () {
+                    addChat("I didn't catch that. Please try again.", "bot");
+                };
+            }
+        }
+
+        function submitForm() {
+            fetch("/submit_form", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(formData)
+            })
+            .then(res => res.json())
+            .then(data => addChat(data.message, "bot"));
+        }
+    </script>
+</body>
+</html>
